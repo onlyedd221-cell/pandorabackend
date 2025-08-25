@@ -1,19 +1,36 @@
-const User = require("../models/User");
-const Message = require("../models/Message");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const sendOTP = require("../utils/sendOTP");
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const sendOTP = require('../utils/sendOTP');
 
 const SUPPORT_EMAIL = "blissfortune222@gmail.com";
 
+let messages = []; // In-memory for now. Replace with DB if needed.
+
 const userResolvers = {
   Query: {
-    getMessages: async (_, { sessionId }) => {
-      return await Message.find({ sessionId }).sort({ createdAt: 1 });
+    // ✅ Get messages a user sent to admin
+    getMessagesFromUser: async (_, { email }) => {
+      return messages.filter(
+        (msg) => msg.email === email && msg.from === "user"
+      );
+    },
+
+    // ✅ Get messages admin sent to a user
+    getMessagesFromAdmin: async (_, { email }) => {
+      return messages.filter(
+        (msg) => msg.email === email && msg.from === "admin"
+      );
+    },
+
+    // ✅ Full conversation between a user and admin
+    getConversation: async (_, { email }) => {
+      return messages.filter((msg) => msg.email === email);
     },
   },
 
   Mutation: {
+    // ✅ User registration
     register: async (_, { name, email, password }) => {
       const existingUser = await User.findOne({ email });
       if (existingUser) throw new Error("User already exists");
@@ -29,7 +46,7 @@ const userResolvers = {
         email,
         password: hashedPassword,
         otp,
-        otpExpire: Date.now() + 10 * 60 * 1000, // 10 minutes
+        otpExpire: Date.now() + 10 * 60 * 1000,
       });
 
       await user.save();
@@ -38,6 +55,7 @@ const userResolvers = {
       return { message: "OTP sent to email, please verify", user };
     },
 
+    // ✅ Verify OTP
     verifyOTP: async (_, { email, otp }) => {
       const user = await User.findOne({ email });
       if (!user) throw new Error("User not found");
@@ -56,6 +74,7 @@ const userResolvers = {
       return { message: "OTP verified successfully", token, user };
     },
 
+    // ✅ Login
     login: async (_, { email, password }) => {
       const user = await User.findOne({ email });
       if (!user) throw new Error("User not found");
@@ -72,24 +91,42 @@ const userResolvers = {
       return { message: "Login successful", token, user };
     },
 
+    // ✅ Sign out
     signOut: async () => {
       return { message: "Sign out successful" };
     },
 
-    sendMessage: async (_, { sessionId, email, content }) => {
+    // ✅ User sends message → admin
+    sendMessage: async (_, { email, content }) => {
       const user = await User.findOne({ email });
       if (!user) throw new Error("User not found");
 
-      const from = email === SUPPORT_EMAIL ? "admin" : "user";
-
-      const message = new Message({
-        sessionId,
-        from,
-        email,        // ✅ now saving email in the message
+      const message = {
+        id: `${messages.length + 1}`,
+        email, // links conversation to user email
+        from: "user",
         content,
-      });
+        createdAt: new Date().toISOString(),
+      };
 
-      await message.save();
+      messages.push(message);
+      return message;
+    },
+
+    // ✅ Admin sends message → user
+    sendAdminMessage: async (_, { email, content }) => {
+      const user = await User.findOne({ email });
+      if (!user) throw new Error("User not found");
+
+      const message = {
+        id: `${messages.length + 1}`,
+        email, // still ties to user’s email
+        from: "admin",
+        content,
+        createdAt: new Date().toISOString(),
+      };
+
+      messages.push(message);
       return message;
     },
   },

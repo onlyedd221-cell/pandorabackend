@@ -19,9 +19,8 @@ const typeDefs = gql`
   # ==========================
   type Message {
     id: ID!
-    sessionId: String!
-    from: String!
-    email: String
+    email: String!       # user’s email is the thread identifier
+    from: String!        # "user" or "admin"
     content: String!
     createdAt: String!
   }
@@ -47,18 +46,30 @@ const typeDefs = gql`
   # ==========================
   type Query {
     _empty: String
-    getMessages(sessionId: String!): [Message!]!
+
+    # ✅ Get messages from a user to admin
+    getMessagesFromUser(email: String!): [Message!]!
+
+    # ✅ Get messages from admin to a user
+    getMessagesFromAdmin(email: String!): [Message!]!
+
+    # ✅ Get full conversation (both user + admin messages)
+    getConversation(email: String!): [Message!]!
   }
 
   # ==========================
   # Mutations
   # ==========================
   type Mutation {
+    # ✅ Auth
     register(name: String!, email: String!, password: String!): AuthPayload
     verifyOTP(email: String!, otp: String!): AuthPayload
     login(email: String!, password: String!): AuthPayload
     signOut: MessageResponse
-    sendMessage(sessionId: String!, email: String!, content: String!): Message!
+
+    # ✅ Messaging
+    sendMessage(email: String!, content: String!): Message!       # user -> admin
+    sendAdminMessage(email: String!, content: String!): Message!  # admin -> user
   }
 `;
 
