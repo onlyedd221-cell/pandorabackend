@@ -1,4 +1,4 @@
-const { gql } = require('apollo-server-express');
+const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
   # ==========================
@@ -19,14 +19,15 @@ const typeDefs = gql`
   # ==========================
   type Message {
     id: ID!
-    email: String!       # user’s email is the thread identifier
-    from: String!        # "user" or "admin"
+    chatId: String!
+    from: String!   # "user" or "admin"
+    type: String!   # "text" or "image"
     content: String!
-    createdAt: String!
+    timestamp: String!
   }
 
   # ==========================
-  # Auth Payload (for login/register/verifyOTP)
+  # Auth Payload
   # ==========================
   type AuthPayload {
     token: String
@@ -38,38 +39,38 @@ const typeDefs = gql`
   # Generic Response
   # ==========================
   type MessageResponse {
-    message: String
+    message: String!
   }
 
   # ==========================
   # Queries
   # ==========================
   type Query {
-    _empty: String
+    # Get all chats (admin only)
+    getAllChats: [User!]!
 
-    # ✅ Get messages from a user to admin
-    getMessagesFromUser(email: String!): [Message!]!
-
-    # ✅ Get messages from admin to a user
-    getMessagesFromAdmin(email: String!): [Message!]!
-
-    # ✅ Get full conversation (both user + admin messages)
-    getConversation(email: String!): [Message!]!
+    # Get messages for a specific chat
+    getMessages(chatId: String!): [Message!]!
   }
 
   # ==========================
   # Mutations
   # ==========================
   type Mutation {
-    # ✅ Auth
-    register(name: String!, email: String!, password: String!): AuthPayload
-    verifyOTP(email: String!, otp: String!): AuthPayload
-    login(email: String!, password: String!): AuthPayload
-    signOut: MessageResponse
+    # Register a new user
+    register(name: String!, email: String!, password: String!): AuthPayload!
 
-    # ✅ Messaging
-    sendMessage(email: String!, content: String!): Message!       # user -> admin
-    sendAdminMessage(email: String!, content: String!): Message!  # admin -> user
+    # Verify OTP
+    verifyOTP(email: String!, otp: String!): AuthPayload!
+
+    # Login
+    login(email: String!, password: String!): AuthPayload!
+
+    # Sign out
+    signOut: MessageResponse!
+
+    # Send a message
+    sendMessage(chatId: String!, from: String!, type: String!, content: String!): Message!
   }
 `;
 

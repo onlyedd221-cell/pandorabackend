@@ -1,135 +1,192 @@
 const User = require('../models/User');
+const Message = require('../models/Message');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sendOTP = require('../utils/sendOTP');
 
 const SUPPORT_EMAIL = "blissfortune222@gmail.com";
 
-let messages = []; // In-memory for now. Replace with DB if needed.
-
 const userResolvers = {
   Query: {
-    // ✅ Get messages a user sent to admin
-    getMessagesFromUser: async (_, { email }) => {
-      return messages.filter(
-        (msg) => msg.email === email && msg.from === "user"
-      );
+    // ==========================
+    // Fetch all chats (admin)
+    // ==========================
+    getAllChats: async () => {
+      try {
+        console.log("[DEBUG] getAllChats called");
+        const users = await User.find({ email: { $ne: SUPPORT_EMAIL } });
+        console.log("[DEBUG] Users fetched:", users);
+        return users.map(u => ({
+          id: u._id.toString(),
+          name: u.name,
+          email: u.email
+        }));
+      } catch (err) {
+        console.error("[ERROR] getAllChats failed:", err);
+        throw err;
+      }
     },
 
-    // ✅ Get messages admin sent to a user
-    getMessagesFromAdmin: async (_, { email }) => {
-      return messages.filter(
-        (msg) => msg.email === email && msg.from === "admin"
-      );
-    },
+    // ==========================
+    // Fetch messages for a chat
+    // ==========================
+    getMessages: async (_, { chatId }) => {
+      try {
+        console.log("[DEBUG] getMessages called with chatId:", chatId);
+        if (!chatId) throw new Error("chatId is required");
 
-    // ✅ Full conversation between a user and admin
-    getConversation: async (_, { email }) => {
-      return messages.filter((msg) => msg.email === email);
+        const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
+        console.log("[DEBUG] Messages found:", messages);
+
+        return messages.map(m => ({
+          id: m._id.toString(),
+          chatId: m.chatId,
+          from: m.from,
+          type: m.type,
+          content: m.content,
+          timestamp: m.createdAt ? m.createdAt.getTime().toString() : Date.now().toString()
+        }));
+      } catch (err) {
+        console.error("[ERROR] getMessages failed:", err);
+        throw err;
+      }
     },
   },
 
   Mutation: {
-    // ✅ User registration
+    // ==========================
+    // Register user
+    // ==========================
     register: async (_, { name, email, password }) => {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) throw new Error("User already exists");
+      try {
+        console.log("[DEBUG] register called with:", { name, email });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) throw new Error('User already exists');
 
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const otp = String(Math.floor(100000 + Math.random() * 900000)).padStart(
-        6,
-        "0"
-      );
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const otp = String(Math.floor(100000 + Math.random() * 900000)).padStart(6, '0');
 
-      const user = new User({
-        name,
-        email,
-        password: hashedPassword,
-        otp,
-        otpExpire: Date.now() + 10 * 60 * 1000,
-      });
+        const user = new User({
+          name,
+          email,
+          password: hashedPassword,
+          otp,
+          otpExpire: Date.now() + 10 * 60 * 1000
+        });
 
-      await user.save();
-      await sendOTP(email, otp);
+        await user.save();
+        console.log("[DEBUG] User saved:", user);
 
-      return { message: "OTP sent to email, please verify", user };
+        await sendOTP(email, otp);
+        console.log("[DEBUG] OTP sent:", otp);
+
+        return { message: 'OTP sent to email, please verify', user };
+      } catch (err) {
+        console.error("[ERROR] register failed:", err);
+        throw err;
+      }
     },
 
-    // ✅ Verify OTP
+    // ==========================
+    // Verify OTP
+    // ==========================
     verifyOTP: async (_, { email, otp }) => {
-      const user = await User.findOne({ email });
-      if (!user) throw new Error("User not found");
-      if (user.otp !== otp) throw new Error("Invalid OTP");
-      if (user.otpExpire < Date.now()) throw new Error("OTP expired");
+      try {
+        console.log("[DEBUG] verifyOTP called with:", { email, otp });
+        const user = await User.findOne({ email });
+        if (!user) throw new Error('User not found');
+        if (user.otp !== otp) throw new Error('Invalid OTP');
+        if (user.otpExpire < Date.now()) throw new Error('OTP expired');
 
-      user.otp = null;
-      user.otpExpire = null;
-      user.otpVerified = true;
-      await user.save();
+        user.otp = null;
+        user.otpExpire = null;
+        user.otpVerified = true;
+        await user.save();
+        console.log("[DEBUG] OTP verified, user updated:", user);
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
+        const role = email === SUPPORT_EMAIL ? "admin" : "user";
+        const token = jwt.sign(
+          { id: user._id, email: user.email, role },
+          process.env.JWT_SECRET,
+          { expiresIn: '1d' }
+        );
+        console.log("[DEBUG] JWT generated:", token);
 
-      return { message: "OTP verified successfully", token, user };
+        return { message: 'OTP verified successfully', token, user };
+      } catch (err) {
+        console.error("[ERROR] verifyOTP failed:", err);
+        throw err;
+      }
     },
 
-    // ✅ Login
+    // ==========================
+    // Login
+    // ==========================
     login: async (_, { email, password }) => {
-      const user = await User.findOne({ email });
-      if (!user) throw new Error("User not found");
-      if (!user.otpVerified)
-        throw new Error("Please register and verify your OTP before logging in");
+      try {
+        console.log("[DEBUG] login called with email:", email);
+        const user = await User.findOne({ email });
+        if (!user) throw new Error('User not found');
+        if (!user.otpVerified) throw new Error('Please register and verify your OTP before logging in');
 
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) throw new Error("Incorrect password");
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) throw new Error('Incorrect password');
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
+        const role = email === SUPPORT_EMAIL ? "admin" : "user";
+        const token = jwt.sign(
+          { id: user._id, email: user.email, role },
+          process.env.JWT_SECRET,
+          { expiresIn: '1d' }
+        );
+        console.log("[DEBUG] Login successful, JWT:", token);
 
-      return { message: "Login successful", token, user };
+        return { message: 'Login successful', token, user };
+      } catch (err) {
+        console.error("[ERROR] login failed:", err);
+        throw err;
+      }
     },
 
-    // ✅ Sign out
+    // ==========================
+    // Sign out
+    // ==========================
     signOut: async () => {
+      console.log("[DEBUG] signOut called");
       return { message: "Sign out successful" };
     },
 
-    // ✅ User sends message → admin
-    sendMessage: async (_, { email, content }) => {
-      const user = await User.findOne({ email });
-      if (!user) throw new Error("User not found");
+    // ==========================
+    // Send message
+    // ==========================
+    sendMessage: async (_, { chatId, from, type, content }) => {
+      try {
+        console.log("[DEBUG] sendMessage called:", { chatId, from, type, content });
+        if (!chatId || !from || !type || !content) throw new Error("All fields are required");
 
-      const message = {
-        id: `${messages.length + 1}`,
-        email, // links conversation to user email
-        from: "user",
-        content,
-        createdAt: new Date().toISOString(),
-      };
+        const message = new Message({
+          chatId,
+          from,
+          type,
+          content,
+          createdAt: Date.now()
+        });
+        await message.save();
+        console.log("[DEBUG] Message saved:", message);
 
-      messages.push(message);
-      return message;
-    },
-
-    // ✅ Admin sends message → user
-    sendAdminMessage: async (_, { email, content }) => {
-      const user = await User.findOne({ email });
-      if (!user) throw new Error("User not found");
-
-      const message = {
-        id: `${messages.length + 1}`,
-        email, // still ties to user’s email
-        from: "admin",
-        content,
-        createdAt: new Date().toISOString(),
-      };
-
-      messages.push(message);
-      return message;
-    },
-  },
+        return {
+          id: message._id.toString(),
+          chatId: message.chatId,
+          from: message.from,
+          type: message.type,
+          content: message.content,
+          timestamp: message.createdAt.toString()
+        };
+      } catch (err) {
+        console.error("[ERROR] sendMessage failed:", err);
+        throw err;
+      }
+    }
+  }
 };
 
 module.exports = userResolvers;
