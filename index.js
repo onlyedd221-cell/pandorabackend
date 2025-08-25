@@ -11,9 +11,10 @@ const cors = require('cors');
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:3000',
+//   'http://localhost:3000',
   'http://localhost:10000',
-  'https://studio.apollographql.com'
+  'https://studio.apollographql.com',
+  'https://pandoramistressclubhouse.vercel.app'
 ];
 
 app.use(cors({
