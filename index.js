@@ -30,6 +30,11 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 connectDB();
 
+// Add this route to handle GET / requests
+app.get('/', (req, res) => {
+  res.send('Backend is running 🚀');
+});
+
 const server = new ApolloServer({
   typeDefs: userSchema,
   resolvers: userResolvers,
