@@ -10,8 +10,9 @@ const cors = require('cors');
 
 const app = express();
 
+// ✅ Correct list of allowed origins (no trailing slash, no /graphql)
 const allowedOrigins = [
-//   'http://localhost:3000',
+  'http://localhost:3000',
   'http://localhost:10000',
   'https://studio.apollographql.com',
   'https://pandoramistressclubhouse.vercel.app'
@@ -19,8 +20,11 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-    else callback(new Error('Not allowed by CORS'));
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   credentials: true
 }));
@@ -31,7 +35,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 connectDB();
 
-// Add this route to handle GET / requests
+// Add this route to handle GET /
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
 });

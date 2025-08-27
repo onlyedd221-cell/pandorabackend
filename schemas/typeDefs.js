@@ -8,8 +8,6 @@ const typeDefs = gql`
     id: ID!
     name: String!
     email: String!
-    otp: String
-    otpVerified: Boolean
     createdAt: String
     updatedAt: String
   }
@@ -60,8 +58,7 @@ const typeDefs = gql`
     # Register a new user
     register(name: String!, email: String!, password: String!): AuthPayload!
 
-    # Verify OTP
-    verifyOTP(email: String!, otp: String!): AuthPayload!
+   
 
     # Login
     login(email: String!, password: String!): AuthPayload!

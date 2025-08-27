@@ -70,54 +70,21 @@ const userResolvers = {
           name,
           email,
           password: hashedPassword,
-          otp,
-          otpExpire: Date.now() + 10 * 60 * 1000
         });
 
         await user.save();
         console.log("[DEBUG] User saved:", user);
 
-        await sendOTP(email, otp);
-        console.log("[DEBUG] OTP sent:", otp);
 
-        return { message: 'OTP sent to email, please verify', user };
+        return { message: ' register Succesful:', user };
       } catch (err) {
         console.error("[ERROR] register failed:", err);
         throw err;
       }
     },
 
-    // ==========================
-    // Verify OTP
-    // ==========================
-    verifyOTP: async (_, { email, otp }) => {
-      try {
-        console.log("[DEBUG] verifyOTP called with:", { email, otp });
-        const user = await User.findOne({ email });
-        if (!user) throw new Error('User not found');
-        if (user.otp !== otp) throw new Error('Invalid OTP');
-        if (user.otpExpire < Date.now()) throw new Error('OTP expired');
-
-        user.otp = null;
-        user.otpExpire = null;
-        user.otpVerified = true;
-        await user.save();
-        console.log("[DEBUG] OTP verified, user updated:", user);
-
-        const role = email === SUPPORT_EMAIL ? "admin" : "user";
-        const token = jwt.sign(
-          { id: user._id, email: user.email, role },
-          process.env.JWT_SECRET,
-          { expiresIn: '1d' }
-        );
-        console.log("[DEBUG] JWT generated:", token);
-
-        return { message: 'OTP verified successfully', token, user };
-      } catch (err) {
-        console.error("[ERROR] verifyOTP failed:", err);
-        throw err;
-      }
-    },
+  
+    
 
     // ==========================
     // Login
@@ -127,7 +94,6 @@ const userResolvers = {
         console.log("[DEBUG] login called with email:", email);
         const user = await User.findOne({ email });
         if (!user) throw new Error('User not found');
-        if (!user.otpVerified) throw new Error('Please register and verify your OTP before logging in');
 
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) throw new Error('Incorrect password');
