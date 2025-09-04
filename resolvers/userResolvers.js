@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sendOTP = require('../utils/sendOTP');
 
-const SUPPORT_EMAIL = "blissfortune222@gmail.com";
+const SUPPORT_EMAIL = "admin302@gmail.com";
 
 const userResolvers = {
   Query: {
@@ -102,7 +102,7 @@ const userResolvers = {
         const token = jwt.sign(
           { id: user._id, email: user.email, role },
           process.env.JWT_SECRET,
-          { expiresIn: '1d' }
+           { expiresIn: "15m" }
         );
         console.log("[DEBUG] Login successful, JWT:", token);
 

@@ -13,6 +13,7 @@ const app = express();
 // ✅ Correct list of allowed origins (no trailing slash, no /graphql)
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:10000',
   'https://studio.apollographql.com',
   'https://pandoramistressclubhouse.vercel.app'
