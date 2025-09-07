@@ -16,7 +16,7 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:10000',
   'https://studio.apollographql.com',
-  'https://pandoragoddessclubhouse.vercel.app'
+  'https://thefetishfortress.vercel.app'
 ];
 
 app.use(cors({
