@@ -26,6 +26,25 @@ const typeDefs = gql`
   }
 
   # ==========================
+  # Booking Type
+  # ==========================
+  type Booking {
+    id: ID!
+    userId: ID!
+    name: String!
+    phone: String!
+    email: String!
+    room: String!
+    date: String!
+    time: String!
+    duration: String!
+    notes: String
+    paymentMethod: String!
+    sessionType: String!
+    createdAt: String!
+  }
+
+  # ==========================
   # Auth Payload
   # ==========================
   type AuthPayload {
@@ -45,42 +64,36 @@ const typeDefs = gql`
   # Queries
   # ==========================
   type Query {
-    # Get all active chats (admin only)
     getAllChats: [User!]!
-
-    # Get archived chats (admin only)
     getArchivedChats: [User!]!
-
-    # Get messages for a specific chat
     getMessages(chatId: String!): [Message!]!
+    getUserBookings(userId: ID!): [Booking!]!  # Admin only
   }
 
   # ==========================
   # Mutations
   # ==========================
   type Mutation {
-    # Register a new user
     register(name: String!, email: String!, password: String!): AuthPayload!
-
-    # Login
     login(email: String!, password: String!): AuthPayload!
-
-    # Sign out
     signOut: MessageResponse!
-
-    # Send a message
-    sendMessage(
-      chatId: String!
-      from: String!
-      type: String!
-      content: String!
-    ): Message!
-
-    # Archive a chat
+    sendMessage(chatId: String!, from: String!, type: String!, content: String!): Message!
     archiveChat(chatId: String!): MessageResponse!
-
-    # Unarchive a chat
     unarchiveChat(chatId: String!): MessageResponse!
+
+    # ✅ Create booking (logged-in user) — no userId argument
+    createBooking(
+      name: String!
+      phone: String!
+      email: String!
+      room: String!
+      date: String!
+      time: String!
+      duration: String!
+      notes: String
+      paymentMethod: String!
+      sessionType: String!
+    ): Booking!
   }
 `;
 
