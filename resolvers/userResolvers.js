@@ -1,24 +1,21 @@
-const User = require("../models/User");
-const Message = require("../models/Message");
-const Booking = require("../models/Booking");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const User = require('../models/User');
+const Message = require('../models/Message');
+const Booking = require('../models/Booking');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const SUPPORT_EMAIL = "admin302@gmail.com";
 
 const userResolvers = {
   Query: {
-    // ==========================
+      // ==========================
     // Fetch all active chats
     // ==========================
     getAllChats: async () => {
       try {
         console.log("[DEBUG] getAllChats called");
-        const users = await User.find({
-          email: { $ne: SUPPORT_EMAIL },
-          archived: false,
-        });
-        return users.map((u) => ({
+        const users = await User.find({ email: { $ne: SUPPORT_EMAIL }, archived: false });
+        return users.map(u => ({
           id: u._id.toString(),
           name: u.name,
           email: u.email,
@@ -36,11 +33,8 @@ const userResolvers = {
     getArchivedChats: async () => {
       try {
         console.log("[DEBUG] getArchivedChats called");
-        const users = await User.find({
-          email: { $ne: SUPPORT_EMAIL },
-          archived: true,
-        });
-        return users.map((u) => ({
+        const users = await User.find({ email: { $ne: SUPPORT_EMAIL }, archived: true });
+        return users.map(u => ({
           id: u._id.toString(),
           name: u.name,
           email: u.email,
@@ -61,21 +55,20 @@ const userResolvers = {
 
         const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
 
-        return messages.map((m) => ({
+        return messages.map(m => ({
           id: m._id.toString(),
           chatId: m.chatId,
           from: m.from,
           type: m.type,
           content: m.content,
-          timestamp: m.createdAt
-            ? m.createdAt.getTime().toString()
-            : Date.now().toString(),
+          timestamp: m.createdAt ? m.createdAt.getTime().toString() : Date.now().toString(),
         }));
       } catch (err) {
         // console.error("[ERROR] getMessages failed:", err);
         throw err;
       }
     },
+ 
 
     // ==========================
     // Admin: get bookings for a specific user
@@ -85,7 +78,7 @@ const userResolvers = {
       if (!userId) throw new Error("userId is required");
 
       const bookings = await Booking.find({ userId }).sort({ createdAt: -1 });
-      return bookings.map((b) => ({
+      return bookings.map(b => ({
         id: b._id.toString(),
         userId: b.userId.toString(),
         name: b.name,
@@ -101,6 +94,9 @@ const userResolvers = {
         createdAt: b.createdAt.toISOString(),
       }));
     },
+
+  
+
   },
 
   Mutation: {
@@ -112,20 +108,11 @@ const userResolvers = {
       if (existingUser) throw new Error("User already exists");
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = new User({
-        name,
-        email,
-        password: hashedPassword,
-        archived: false,
-      });
+      const user = new User({ name, email, password: hashedPassword, archived: false });
       await user.save();
 
       const role = email === SUPPORT_EMAIL ? "admin" : "user";
-      const token = jwt.sign(
-        { id: user._id, email: user.email, role },
-        process.env.JWT_SECRET,
-        { expiresIn: "15m" }
-      );
+      const token = jwt.sign({ id: user._id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
       return { message: "Register successful", token, user };
     },
@@ -141,11 +128,7 @@ const userResolvers = {
       if (!isValid) throw new Error("Incorrect password");
 
       const role = email === SUPPORT_EMAIL ? "admin" : "user";
-      const token = jwt.sign(
-        { id: user._id, email: user.email, role },
-        process.env.JWT_SECRET,
-        { expiresIn: "15m" }
-      );
+      const token = jwt.sign({ id: user._id, email: user.email, role }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
       return { message: "Login successful", token, user };
     },
@@ -162,8 +145,7 @@ const userResolvers = {
     // ==========================
     sendMessage: async (_, { chatId, from, type, content }, { user }) => {
       if (!user) throw new Error("Authentication required");
-      if (!chatId || !from || !type || !content)
-        throw new Error("All fields are required");
+      if (!chatId || !from || !type || !content) throw new Error("All fields are required");
 
       const message = new Message({ chatId, from, type, content });
       await message.save();
@@ -182,14 +164,9 @@ const userResolvers = {
     // Archive chat
     // ==========================
     archiveChat: async (_, { chatId }, { user }) => {
-      if (!user || user.email !== SUPPORT_EMAIL)
-        throw new Error("Admin access required");
+      if (!user || user.email !== SUPPORT_EMAIL) throw new Error("Admin access required");
 
-      const updated = await User.findByIdAndUpdate(
-        chatId,
-        { archived: true },
-        { new: true }
-      );
+      const updated = await User.findByIdAndUpdate(chatId, { archived: true }, { new: true });
       if (!updated) throw new Error("Chat not found");
       return { message: "Chat archived successfully" };
     },
@@ -198,14 +175,9 @@ const userResolvers = {
     // Unarchive chat
     // ==========================
     unarchiveChat: async (_, { chatId }, { user }) => {
-      if (!user || user.email !== SUPPORT_EMAIL)
-        throw new Error("Admin access required");
+      if (!user || user.email !== SUPPORT_EMAIL) throw new Error("Admin access required");
 
-      const updated = await User.findByIdAndUpdate(
-        chatId,
-        { archived: false },
-        { new: true }
-      );
+      const updated = await User.findByIdAndUpdate(chatId, { archived: false }, { new: true });
       if (!updated) throw new Error("Chat not found");
       return { message: "Chat unarchived successfully" };
     },
@@ -213,129 +185,63 @@ const userResolvers = {
     // ==========================
     // User: create booking
     // ==========================
-    // ==========================
-    // User: create booking
-    // ==========================
-    // createBooking: async (
-    //   _,
-    //   {
-    //     name,
-    //     phone,
-    //     email,
-    //     room,
-    //     date,
-    //     time,
-    //     duration,
-    //     notes,
-    //     paymentMethod,
-    //     sessionType,
-    //   },
-    //   { user } // JWT context
-    // ) => {
-    //   if (!user) throw new Error("Authentication required");
+  // ==========================
+// User: create booking
+// ==========================
+createBooking: async (
+  _,
+  {
+    name,
+    phone,
+    email,
+    room,
+    date,
+    time,
+    duration,
+    notes,
+    paymentMethod,
+    sessionType,
+  },
+  { user } // JWT context
+) => {
+  if (!user) throw new Error("Authentication required");
 
-    //   // Create new booking linked to the logged-in user's ID
-    //   const booking = new Booking({
-    //     userId: user.id,
-    //     name,
-    //     phone,
-    //     email,
-    //     room,
-    //     date,
-    //     time,
-    //     duration,
-    //     notes,
-    //     paymentMethod,
-    //     sessionType,
-    //     createdAt: new Date(),
-    //   });
+  // Create new booking linked to the logged-in user's ID
+  const booking = new Booking({
+    userId: user.id,
+    name,
+    phone,
+    email,
+    room,
+    date,
+    time,
+    duration,
+    notes,
+    paymentMethod,
+    sessionType,
+    createdAt: new Date(),
+  });
 
-    //   await booking.save();
+  await booking.save();
 
-    //   // Return in the same structure as getUserBookings
-    //   return {
-    //     id: booking._id.toString(),
-    //     userId: booking.userId.toString(),
-    //     name: booking.name,
-    //     phone: booking.phone,
-    //     email: booking.email,
-    //     room: booking.room,
-    //     date: booking.date,
-    //     time: booking.time,
-    //     duration: booking.duration,
-    //     notes: booking.notes,
-    //     paymentMethod: booking.paymentMethod,
-    //     sessionType: booking.sessionType,
-    //     createdAt: booking.createdAt.toISOString(),
-    //   };
-    // }
+  // Return in the same structure as getUserBookings
+  return {
+    id: booking._id.toString(),
+    userId: booking.userId.toString(),
+    name: booking.name,
+    phone: booking.phone,
+    email: booking.email,
+    room: booking.room,
+    date: booking.date,
+    time: booking.time,
+    duration: booking.duration,
+    notes: booking.notes,
+    paymentMethod: booking.paymentMethod,
+    sessionType: booking.sessionType,
+    createdAt: booking.createdAt.toISOString(),
+  };
+}
 
-    // },
-    createBooking: async (
-      _,
-      {
-        name,
-        phone,
-        email,
-        room,
-        date,
-        time,
-        duration,
-        notes,
-        paymentMethod,
-        sessionType,
-      },
-      { user } // JWT context
-    ) => {
-      if (!user) throw new Error("Authentication required");
-
-      // Create new booking linked to the logged-in user's ID
-      const booking = new Booking({
-        userId: user.id,
-        name,
-        phone,
-        email,
-        room,
-        date,
-        time,
-        duration,
-        notes,
-        paymentMethod,
-        sessionType,
-        createdAt: new Date(),
-      });
-
-      await booking.save();
-
-      // ✅ Create a message from the user to support
-      const userMessage = new Message({
-        chatId: user.id, // link to user's chat
-        from: user.email, // user is sender
-        type: "booking", // custom type
-        content: `Hi, I just made a booking:
-Room: ${room}, Date: ${date}, Time: ${time}, Duration: ${duration}`,
-        createdAt: new Date(),
-      });
-
-      await userMessage.save();
-
-      // Return the booking
-      return {
-        id: booking._id.toString(),
-        userId: booking.userId.toString(),
-        name: booking.name,
-        phone: booking.phone,
-        email: booking.email,
-        room: booking.room,
-        date: booking.date,
-        time: booking.time,
-        duration: booking.duration,
-        notes: booking.notes,
-        paymentMethod: booking.paymentMethod,
-        sessionType: booking.sessionType,
-        createdAt: booking.createdAt.toISOString(),
-      };
-    },
   },
 };
 
